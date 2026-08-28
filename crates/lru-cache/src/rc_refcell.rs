@@ -153,3 +153,117 @@ impl<K, V> Node<K, V> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn get_on_empty_cache_returns_none() {
+        let mut c: LruCache<i32, i32> = LruCache::new(2);
+        assert!(c.get(&1).is_none());
+    }
+
+    #[test]
+    fn put_then_get_returns_value() {
+        let mut c: LruCache<i32, i32> = LruCache::new(3);
+        c.put(1, 10);
+        assert_eq!(*c.get(&1).unwrap(), 10);
+    }
+
+    #[test]
+    fn put_overwrites_existing_key() {
+        let mut c: LruCache<i32, i32> = LruCache::new(3);
+        c.put(1, 10);
+        c.put(1, 99);
+        assert_eq!(*c.get(&1).unwrap(), 99);
+    }
+
+    #[test]
+    fn fills_below_capacity_without_eviction() {
+        let mut c: LruCache<i32, i32> = LruCache::new(3);
+        c.put(1, 10);
+        c.put(2, 20);
+        assert_eq!(*c.get(&1).unwrap(), 10);
+        assert_eq!(*c.get(&2).unwrap(), 20);
+    }
+
+    #[test]
+    fn eviction_removes_least_recently_used() {
+        let mut c: LruCache<i32, i32> = LruCache::new(2);
+        c.put(1, 10);
+        c.put(2, 20);
+        c.put(3, 30); // evicts 1
+
+        assert!(c.get(&1).is_none());
+        assert_eq!(*c.get(&2).unwrap(), 20);
+        assert_eq!(*c.get(&3).unwrap(), 30);
+    }
+
+    #[test]
+    fn get_refreshes_recency_and_protects_from_eviction() {
+        let mut c: LruCache<i32, i32> = LruCache::new(2);
+        c.put(1, 10);
+        c.put(2, 20);
+        c.get(&1); // 1 is now most recently used, 2 becomes LRU
+        c.put(3, 30); // evicts 2, not 1
+
+        assert!(c.get(&2).is_none());
+        assert_eq!(*c.get(&1).unwrap(), 10);
+        assert_eq!(*c.get(&3).unwrap(), 30);
+    }
+
+    #[test]
+    fn put_on_existing_key_also_refreshes_recency() {
+        let mut c: LruCache<i32, i32> = LruCache::new(2);
+        c.put(1, 10);
+        c.put(2, 20);
+        c.put(1, 11); // touches 1, 2 becomes LRU
+        c.put(3, 30); // evicts 2, not 1
+
+        assert!(c.get(&2).is_none());
+        assert_eq!(*c.get(&1).unwrap(), 11);
+        assert_eq!(*c.get(&3).unwrap(), 30);
+    }
+
+    #[test]
+    fn repeated_eviction_reuses_freed_slots() {
+        let mut c: LruCache<i32, i32> = LruCache::new(2);
+        for i in 0..10 {
+            c.put(i, i * 100);
+        }
+
+        assert!(c.get(&7).is_none());
+        assert_eq!(*c.get(&8).unwrap(), 800);
+        assert_eq!(*c.get(&9).unwrap(), 900);
+    }
+
+    #[test]
+    fn evicted_key_can_be_reinserted() {
+        let mut c: LruCache<i32, i32> = LruCache::new(2);
+        c.put(1, 10);
+        c.put(2, 20);
+        c.put(3, 30); // evicts 1
+        c.put(1, 111); // re-insert 1, evicts 2 (now LRU)
+
+        assert!(c.get(&2).is_none());
+        assert_eq!(*c.get(&1).unwrap(), 111);
+        assert_eq!(*c.get(&3).unwrap(), 30);
+    }
+
+    #[test]
+    fn capacity_of_one_evicts_every_put() {
+        let mut c: LruCache<i32, i32> = LruCache::new(1);
+        c.put(1, 10);
+        c.put(2, 20);
+
+        assert!(c.get(&1).is_none());
+        assert_eq!(*c.get(&2).unwrap(), 20);
+    }
+
+    #[test]
+    #[should_panic(expected = "capacity must be at least 1")]
+    fn zero_capacity_panics() {
+        let _: LruCache<i32, i32> = LruCache::new(0);
+    }
+}
