@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use crate::Cache;
 
+/// LRU cache backed by a `Vec` arena, with nodes linked via `usize`
+/// indices instead of pointers. Eviction reuses the freed slot in place.
 pub struct LruCache<K, V> {
     capacity: usize,
     map: HashMap<K, usize>,

@@ -1,4 +1,4 @@
-//! Rc<RefCell<Node>> + Weak back-references.
+//! `Rc<RefCell<Node>>` + `Weak` back-references.
 
 use crate::Cache;
 use std::cell::{Ref, RefCell};
@@ -9,6 +9,8 @@ use std::rc::{Rc, Weak};
 type Link<K, V> = Rc<RefCell<Node<K, V>>>;
 type WeakLink<K, V> = Weak<RefCell<Node<K, V>>>;
 
+/// LRU cache backed by a doubly-linked list of `Rc<RefCell<Node>>`, with
+/// `Weak` back-references to avoid reference cycles.
 pub struct LruCache<K, V> {
     capacity: usize,
     map: HashMap<K, Link<K, V>>,
