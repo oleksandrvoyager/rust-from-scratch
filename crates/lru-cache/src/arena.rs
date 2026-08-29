@@ -1,8 +1,8 @@
 //! Vec arena + indices instead of pointers.
 
+use crate::Cache;
 use std::collections::HashMap;
 use std::hash::Hash;
-use crate::Cache;
 
 /// LRU cache backed by a `Vec` arena, with nodes linked via `usize`
 /// indices instead of pointers. Eviction reuses the freed slot in place.
@@ -81,15 +81,13 @@ where
 
     fn evict_tail(&mut self, node: Node<K, V>, tail_index: usize) -> usize {
         let tail_node = &mut self.vec[tail_index];
-        let prev_index = tail_node
-            .as_ref()
-            .and_then(|node| node.prev);
+        let prev_index = tail_node.as_ref().and_then(|node| node.prev);
 
         self.map.remove(
             &tail_node
                 .as_ref()
                 .expect("tail index must point to a live node")
-                .key
+                .key,
         );
 
         self.vec[tail_index] = Some(node);
@@ -113,7 +111,8 @@ impl<K, V> Cache<K, V> for LruCache<K, V>
 where
     K: Eq + Hash + Clone,
 {
-    type Ref<'a> = &'a V
+    type Ref<'a>
+        = &'a V
     where
         Self: 'a,
         V: 'a;
@@ -157,7 +156,8 @@ where
 
         let node = Node::new(key.clone(), value);
         let new_index = if self.vec.len() >= self.capacity
-            && let Some(tail_index) = self.tail.take() {
+            && let Some(tail_index) = self.tail.take()
+        {
             self.evict_tail(node, tail_index)
         } else {
             self.vec.push(Some(node));

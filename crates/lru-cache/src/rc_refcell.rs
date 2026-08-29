@@ -76,7 +76,8 @@ impl<K, V> Cache<K, V> for LruCache<K, V>
 where
     K: Hash + Eq + Clone,
 {
-    type Ref<'a> = Ref<'a, V>
+    type Ref<'a>
+        = Ref<'a, V>
     where
         Self: 'a,
         V: 'a;
