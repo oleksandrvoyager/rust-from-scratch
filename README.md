@@ -5,3 +5,4 @@ Mini-projects built from scratch, each targeting 1-2 Rust topics in depth. Where
 ## Projects
 
 1. [`lru-cache`](crates/lru-cache) — ownership, borrowing, lifetimes (two designs: `Rc<RefCell<>>` vs arena/indices)
+2. [`binary-protocol-parser`](crates/binary-protocol-parser) — memory layout (alignment, endianness, zero-copy lifetimes)
