@@ -98,3 +98,132 @@ fn read_u16(bytes: &[u8]) -> u16 {
 fn read_u32(bytes: &[u8]) -> u32 {
     u32::from_le_bytes(bytes.try_into().expect("caller must pass exactly 4 bytes"))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn build_wav(
+        num_channels: u16,
+        sample_rate: u32,
+        bits_per_sample: u16,
+        payload: &[u8],
+    ) -> Vec<u8> {
+        let mut v = Vec::new();
+        v.extend_from_slice(b"RIFF");
+        v.extend_from_slice(&(36u32 + payload.len() as u32).to_le_bytes());
+        v.extend_from_slice(b"WAVE");
+        v.extend_from_slice(b"fmt ");
+        v.extend_from_slice(&16u32.to_le_bytes());
+        v.extend_from_slice(&1u16.to_le_bytes());
+        v.extend_from_slice(&num_channels.to_le_bytes());
+        v.extend_from_slice(&sample_rate.to_le_bytes());
+        let byte_rate = sample_rate * num_channels as u32 * (bits_per_sample as u32 / 8);
+        v.extend_from_slice(&byte_rate.to_le_bytes());
+        let block_align = num_channels * (bits_per_sample / 8);
+        v.extend_from_slice(&block_align.to_le_bytes());
+        v.extend_from_slice(&bits_per_sample.to_le_bytes());
+        v.extend_from_slice(b"data");
+        v.extend_from_slice(&(payload.len() as u32).to_le_bytes());
+        v.extend_from_slice(payload);
+        v
+    }
+
+    #[test]
+    fn parses_valid_wav() {
+        let payload = [1u8, 2, 3, 4, 5, 6];
+        let bytes = build_wav(2, 44100, 16, &payload);
+        let wav = WavFile::parse(&bytes).expect("should parse");
+        assert_eq!(wav.num_channels, 2);
+        assert_eq!(wav.sample_rate, 44100);
+        assert_eq!(wav.bits_per_sample, 16);
+        assert_eq!(wav.data, &payload);
+    }
+
+    #[test]
+    fn rejects_too_short() {
+        let bytes = vec![0u8; 10];
+        assert!(matches!(
+            WavFile::parse(&bytes),
+            Err(WavParseError::UnexpectedEof)
+        ));
+    }
+
+    #[test]
+    fn rejects_bad_riff_magic() {
+        let mut bytes = build_wav(1, 8000, 8, &[9, 9]);
+        bytes[0] = b'X';
+        assert!(matches!(
+            WavFile::parse(&bytes),
+            Err(WavParseError::UnexpectedValue { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_bad_wave_magic() {
+        let mut bytes = build_wav(1, 8000, 8, &[9, 9]);
+        bytes[8] = b'X';
+        assert!(matches!(
+            WavFile::parse(&bytes),
+            Err(WavParseError::UnexpectedValue { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_bad_fmt_magic() {
+        let mut bytes = build_wav(1, 8000, 8, &[9, 9]);
+        bytes[12] = b'X';
+        assert!(matches!(
+            WavFile::parse(&bytes),
+            Err(WavParseError::UnexpectedValue { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_bad_data_magic() {
+        let mut bytes = build_wav(1, 8000, 8, &[9, 9]);
+        bytes[36] = b'X';
+        assert!(matches!(
+            WavFile::parse(&bytes),
+            Err(WavParseError::UnexpectedValue { .. })
+        ));
+    }
+
+    #[test]
+    fn rejects_truncated_payload() {
+        let mut bytes = build_wav(1, 8000, 8, &[9, 9, 9, 9]);
+        bytes.truncate(bytes.len() - 2);
+        assert!(matches!(
+            WavFile::parse(&bytes),
+            Err(WavParseError::UnexpectedEof)
+        ));
+    }
+
+    #[test]
+    fn rejects_non_pcm_format() {
+        let mut bytes = build_wav(1, 8000, 8, &[1, 2]);
+        bytes[20] = 2;
+        assert!(matches!(
+            WavFile::parse(&bytes),
+            Err(WavParseError::UnsupportedFormat { format: 2 })
+        ));
+    }
+
+    #[test]
+    fn zero_length_payload() {
+        let bytes = build_wav(1, 8000, 8, &[]);
+        let wav = WavFile::parse(&bytes).expect("should parse");
+        assert_eq!(wav.data.len(), 0);
+    }
+
+    #[test]
+    fn stereo_16bit_roundtrip() {
+        let payload = vec![0u8; 100];
+        let bytes = build_wav(2, 48000, 24, &payload);
+        let wav = WavFile::parse(&bytes).expect("should parse");
+        assert_eq!(wav.num_channels, 2);
+        assert_eq!(wav.sample_rate, 48000);
+        assert_eq!(wav.bits_per_sample, 24);
+        assert_eq!(wav.data.len(), 100);
+    }
+}
