@@ -1,3 +1,4 @@
 /target
 .idea/
 /rust-deep-dive-plan.md
+playground/*/target/

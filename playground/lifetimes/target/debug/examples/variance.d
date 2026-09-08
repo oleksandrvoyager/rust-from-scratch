@@ -1,1 +1,0 @@
-/Users/oleksandr/RustroverProjects/rust-from-scratch/playground/lifetimes/target/debug/examples/variance: /Users/oleksandr/RustroverProjects/rust-from-scratch/playground/lifetimes/examples/variance.rs

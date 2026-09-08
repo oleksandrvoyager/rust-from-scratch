@@ -1,1 +1,0 @@
-/Users/oleksandr/RustroverProjects/rust-from-scratch/playground/lifetimes/target/debug/examples/self_referential_attempt: /Users/oleksandr/RustroverProjects/rust-from-scratch/playground/lifetimes/examples/self_referential_attempt.rs
