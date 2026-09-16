@@ -34,21 +34,42 @@ const DATA_MAGIC_RANGE: Range<usize> = 36..40;
 /// `Subchunk2Size`: `u32`, length of the raw sample data that follows the header.
 const PAYLOAD_LEN_RANGE: Range<usize> = 40..HEADER_SIZE;
 
+/// A parsed WAV (PCM) file: metadata plus a zero-copy view of the raw
+/// sample data borrowed from the input buffer.
 pub struct WavFile<'a> {
+    /// Number of audio channels (1 = mono, 2 = stereo, ...).
     pub num_channels: u16,
+    /// Samples per second (e.g. 44100).
     pub sample_rate: u32,
+    /// Bit depth per sample (e.g. 16).
     pub bits_per_sample: u16,
+    /// Raw sample data — a slice into the original input, not a copy.
     pub data: &'a [u8],
 }
 
+/// Error returned by [`WavFile::parse`] for a malformed or unsupported file.
 #[derive(Debug)]
 pub enum WavParseError<'a> {
+    /// The input ended before a required field or the declared payload.
     UnexpectedEof,
-    UnsupportedFormat { format: u16 },
-    UnexpectedValue { expected: &'a [u8], found: &'a [u8] },
+    /// `AudioFormat` isn't `1` (PCM) — only PCM is supported.
+    UnsupportedFormat {
+        /// The unsupported format code found in the file.
+        format: u16,
+    },
+    /// A fixed magic value (`"RIFF"`, `"WAVE"`, `"fmt "`, or `"data"`)
+    /// didn't match what the format requires at that position.
+    UnexpectedValue {
+        /// The magic bytes the format requires at this position.
+        expected: &'a [u8],
+        /// The bytes actually found in the input.
+        found: &'a [u8],
+    },
 }
 
 impl<'a> WavFile<'a> {
+    /// Parses a WAV file from `input`. Zero-copy: `data` borrows directly
+    /// from `input`, not from the parts read to reach it.
     pub fn parse(input: &'a [u8]) -> Result<Self, WavParseError<'a>> {
         if input.len() < HEADER_SIZE {
             return Err(WavParseError::UnexpectedEof);
