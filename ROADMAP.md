@@ -8,7 +8,7 @@ compared.
 |---|---------|-------|--------|
 | 1 | [`lru-cache`](crates/lru-cache) | Ownership, borrowing, lifetimes | Done |
 | 2 | [`binary-protocol-parser`](crates/binary-protocol-parser) | Memory layout (alignment, endianness, zero-copy) | Done |
-| 3 | Lexer/tokenizer + symbol table | Lifetimes in depth | Planned |
+| 3 | [`env-config-lexer`](crates/env-config-lexer) | Lifetimes in depth | Done |
 | 4 | Lazy log/CSV engine | Iterators, custom adapters | Planned |
 | 5 | Rules/middleware engine | Traits & generics (exhaustive) | Planned |
 | 6 | Config loader | Error handling, serde | Planned |
